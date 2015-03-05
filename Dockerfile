@@ -6,6 +6,9 @@ ENV INFLUXDB_VERSION 0.9.0-rc19
 ENV CONFIG_FILE /opt/influxdb/influxdb.conf
 ENV INFLUXDB_DATA_DIR /influxdb
 ENV INFLUXDB_USER influxdb
+ENV INFLUXDB_ADMIN_PORT 8083
+ENV INFLUXDB_BROKER_PORT 8086
+ENV INFLUXDB_DATA_PORT 8086
 
 RUN apt-get update && apt-get upgrade -y && apt-get install -y wget ca-certificates sudo && rm -rf /var/lib/apt/lists/*
 
@@ -20,6 +23,8 @@ RUN sed -i 's|^reporting-disabled.*=.*|reporting-disabled = true|' ${CONFIG_FILE
 
 EXPOSE 8083 8086 8087
 
+ADD influxdb.conf.tmpl /opt/influxdb/influxdb.conf.tmpl
 ADD run.sh /run.sh
+ADD stage/start-influxdb /start-influxdb
 
-CMD ["/run.sh"]
+CMD ["/start-influxdb"]

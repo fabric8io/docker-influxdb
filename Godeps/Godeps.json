@@ -1,0 +1,99 @@
+{
+	"ImportPath": "github.com/fabric8io/docker-influxdb",
+	"GoVersion": "go1.3.3",
+	"Deps": [
+		{
+			"ImportPath": "code.google.com/p/go-uuid/uuid",
+			"Comment": "null-12",
+			"Rev": "7dda39b2e7d5e265014674c5af696ba4186679e9"
+		},
+		{
+			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/api",
+			"Comment": "v0.10.0-623-g0e1c0b2",
+			"Rev": "0e1c0b26dcb38177ccaf949bb0cad8a220ffd62d"
+		},
+		{
+			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/auth/user",
+			"Comment": "v0.10.0-623-g0e1c0b2",
+			"Rev": "0e1c0b26dcb38177ccaf949bb0cad8a220ffd62d"
+		},
+		{
+			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/client",
+			"Comment": "v0.10.0-623-g0e1c0b2",
+			"Rev": "0e1c0b26dcb38177ccaf949bb0cad8a220ffd62d"
+		},
+		{
+			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/conversion",
+			"Comment": "v0.10.0-623-g0e1c0b2",
+			"Rev": "0e1c0b26dcb38177ccaf949bb0cad8a220ffd62d"
+		},
+		{
+			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/labels",
+			"Comment": "v0.10.0-623-g0e1c0b2",
+			"Rev": "0e1c0b26dcb38177ccaf949bb0cad8a220ffd62d"
+		},
+		{
+			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/probe",
+			"Comment": "v0.10.0-623-g0e1c0b2",
+			"Rev": "0e1c0b26dcb38177ccaf949bb0cad8a220ffd62d"
+		},
+		{
+			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/runtime",
+			"Comment": "v0.10.0-623-g0e1c0b2",
+			"Rev": "0e1c0b26dcb38177ccaf949bb0cad8a220ffd62d"
+		},
+		{
+			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/types",
+			"Comment": "v0.10.0-623-g0e1c0b2",
+			"Rev": "0e1c0b26dcb38177ccaf949bb0cad8a220ffd62d"
+		},
+		{
+			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/util",
+			"Comment": "v0.10.0-623-g0e1c0b2",
+			"Rev": "0e1c0b26dcb38177ccaf949bb0cad8a220ffd62d"
+		},
+		{
+			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/version",
+			"Comment": "v0.10.0-623-g0e1c0b2",
+			"Rev": "0e1c0b26dcb38177ccaf949bb0cad8a220ffd62d"
+		},
+		{
+			"ImportPath": "github.com/GoogleCloudPlatform/kubernetes/pkg/watch",
+			"Comment": "v0.10.0-623-g0e1c0b2",
+			"Rev": "0e1c0b26dcb38177ccaf949bb0cad8a220ffd62d"
+		},
+		{
+			"ImportPath": "github.com/davecgh/go-spew/spew",
+			"Rev": "83f84dc933714d51504ceed59f43ead21d096fe7"
+		},
+		{
+			"ImportPath": "github.com/ghodss/yaml",
+			"Rev": "4fb5c728a37b361a1e971a3bb3d785fcc96b6ef5"
+		},
+		{
+			"ImportPath": "github.com/golang/glog",
+			"Rev": "44145f04b68cf362d9c4df2182967c2275eaefed"
+		},
+		{
+			"ImportPath": "github.com/google/cadvisor/info",
+			"Comment": "0.6.2",
+			"Rev": "89088df70eca64cf9d6b9a23a3d2bc21a30916d6"
+		},
+		{
+			"ImportPath": "github.com/spf13/pflag",
+			"Rev": "463bdc838f2b35e9307e91d480878bda5fff7232"
+		},
+		{
+			"ImportPath": "golang.org/x/net/context",
+			"Rev": "cbcac7bb8415db9b6cb4d1ebab1dc9afbd688b97"
+		},
+		{
+			"ImportPath": "gopkg.in/v2/yaml",
+			"Rev": "d466437aa4adc35830964cffc5b5f262c63ddcb4"
+		},
+		{
+			"ImportPath": "speter.net/go/exp/math/dec/inf",
+			"Rev": "42ca6cd68aa922bc3f32f1e056e61b65945d9ad7"
+		}
+	]
+}
