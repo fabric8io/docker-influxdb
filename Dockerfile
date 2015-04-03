@@ -2,7 +2,7 @@ FROM debian:wheezy
 
 MAINTAINER Jimmi Dyson <jimmidyson@gmail.com>
 
-ENV INFLUXDB_VERSION 0.9.0-rc7
+ENV INFLUXDB_VERSION 0.9.0-rc19
 ENV CONFIG_FILE /opt/influxdb/influxdb.conf
 ENV INFLUXDB_DATA_DIR /influxdb
 ENV INFLUXDB_USER influxdb
