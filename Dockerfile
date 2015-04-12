@@ -24,7 +24,6 @@ RUN sed -i 's|^reporting-disabled.*=.*|reporting-disabled = true|' ${CONFIG_FILE
 EXPOSE 8083 8086 8087
 
 ADD influxdb.conf.tmpl /opt/influxdb/influxdb.conf.tmpl
-ADD run.sh /run.sh
-ADD stage/start-influxdb /start-influxdb
+ADD build/start-influxdb /start-influxdb
 
 CMD ["/start-influxdb"]

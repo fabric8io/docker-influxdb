@@ -2,11 +2,11 @@ build/start-influxdb: *.go
 	godep go build -o build/start-influxdb
 
 image:
-	docker build --no-cache -t start-influxdb .
+	docker build -t influxdb .
 
 release:
-	docker tag start-influxdb fabric8/start-influxdb
-	docker push fabric8/start-influxdb
+	docker tag influxdb fabric8/influxdb
+	docker push fabric8/influxdb
 
 .PHONY: clean
 clean:
