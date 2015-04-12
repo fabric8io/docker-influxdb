@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"os/exec"
 	"strconv"
@@ -52,11 +53,17 @@ func main() {
 				log.Println(err)
 			} else {
 				var seeds string
-				for index, pod := range podList.Items {
-					if index > 0 {
-						seeds += ","
+				currentHostname, err := os.Hostname()
+				if err != nil {
+					log.Println(err)
+				}
+				for _, pod := range podList.Items {
+					if pod.Status.Phase == api.PodRunning && len(pod.Status.PodIP) > 0 && pod.Name != currentHostname {
+						if len(seeds) > 0 {
+							seeds += ","
+						}
+						seeds += fmt.Sprintf("http://%v:%v", pod.Status.PodIP, os.Getenv("INFLUXDB_BROKER_PORT"))
 					}
-					seeds += fmt.Sprintf("http://%v:%v", pod.Status.PodIP, os.Getenv("INFLUXDB_BROKER_PORT"))
 				}
 				os.Setenv("INFLUXDB_SEEDS", seeds)
 			}
@@ -65,6 +72,23 @@ func main() {
 
 	if len(os.Getenv("INFLUXDB_SEEDS")) == 0 {
 		os.Setenv("INFLUXDB_SEEDS", "")
+	}
+
+	addrs, err := net.InterfaceAddrs()
+
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	for _, address := range addrs {
+		// check the address type and if it is not a loopback the display it
+		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				os.Setenv("IP_ADDRESS", ipnet.IP.String())
+				break
+			}
+		}
 	}
 
 	t, _ := template.ParseFiles("/opt/influxdb/influxdb.conf.tmpl")
