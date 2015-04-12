@@ -49,6 +49,8 @@ type Preferences struct {
 
 // Cluster contains information about how to communicate with a kubernetes cluster
 type Cluster struct {
+	// LocationOfOrigin indicates where this object came from.  It is used for round tripping config post-merge, but never serialized.
+	LocationOfOrigin string
 	// Server is the address of the kubernetes cluster (https://hostname:port).
 	Server string `json:"server"`
 	// APIVersion is the preferred api version for communicating with the kubernetes cluster (v1beta1, v1beta2, v1beta3, etc).
@@ -57,26 +59,40 @@ type Cluster struct {
 	InsecureSkipTLSVerify bool `json:"insecure-skip-tls-verify,omitempty"`
 	// CertificateAuthority is the path to a cert file for the certificate authority.
 	CertificateAuthority string `json:"certificate-authority,omitempty"`
+	// CertificateAuthorityData contains PEM-encoded certificate authority certificates. Overrides CertificateAuthority
+	CertificateAuthorityData []byte `json:"certificate-authority-data,omitempty"`
 	// Extensions holds additional information. This is useful for extenders so that reads and writes don't clobber unknown fields
 	Extensions map[string]runtime.EmbeddedObject `json:"extensions,omitempty"`
 }
 
 // AuthInfo contains information that describes identity information.  This is use to tell the kubernetes cluster who you are.
 type AuthInfo struct {
+	// LocationOfOrigin indicates where this object came from.  It is used for round tripping config post-merge, but never serialized.
+	LocationOfOrigin string
 	// AuthPath is the path to a kubernetes auth file (~/.kubernetes_auth).  If you provide an AuthPath, the other options specified are ignored
 	AuthPath string `json:"auth-path,omitempty"`
 	// ClientCertificate is the path to a client cert file for TLS.
 	ClientCertificate string `json:"client-certificate,omitempty"`
+	// ClientCertificateData contains PEM-encoded data from a client cert file for TLS. Overrides ClientCertificate
+	ClientCertificateData []byte `json:"client-certificate-data,omitempty"`
 	// ClientKey is the path to a client key file for TLS.
 	ClientKey string `json:"client-key,omitempty"`
+	// ClientKeyData contains PEM-encoded data from a client key file for TLS. Overrides ClientKey
+	ClientKeyData []byte `json:"client-key-data,omitempty"`
 	// Token is the bearer token for authentication to the kubernetes cluster.
 	Token string `json:"token,omitempty"`
+	// Username is the username for basic authentication to the kubernetes cluster.
+	Username string `json:"username,omitempty"`
+	// Password is the password for basic authentication to the kubernetes cluster.
+	Password string `json:"password,omitempty"`
 	// Extensions holds additional information. This is useful for extenders so that reads and writes don't clobber unknown fields
 	Extensions map[string]runtime.EmbeddedObject `json:"extensions,omitempty"`
 }
 
 // Context is a tuple of references to a cluster (how do I communicate with a kubernetes cluster), a user (how do I identify myself), and a namespace (what subset of resources do I want to work with)
 type Context struct {
+	// LocationOfOrigin indicates where this object came from.  It is used for round tripping config post-merge, but never serialized.
+	LocationOfOrigin string
 	// Cluster is the name of the cluster for this context
 	Cluster string `json:"cluster"`
 	// AuthInfo is the name of the authInfo for this context

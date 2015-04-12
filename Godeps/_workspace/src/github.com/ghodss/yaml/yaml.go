@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"strconv"
 
-	"gopkg.in/v2/yaml"
+	"gopkg.in/yaml.v2"
 )
 
 // Marshals the object into JSON then converts JSON to YAML and returns the
@@ -46,7 +46,12 @@ func Unmarshal(y []byte, o interface{}) error {
 func JSONToYAML(j []byte) ([]byte, error) {
 	// Convert the JSON to an object.
 	var jsonObj interface{}
-	err := json.Unmarshal(j, &jsonObj)
+	// We are using yaml.Unmarshal here (instead of json.Unmarshal) because the
+	// Go JSON library doesn't try to pick the right number type (int, float,
+	// etc.) when unmarshling to interface{}, it just picks float64
+	// universally. go-yaml does go through the effort of picking the right
+	// number type, so we can preserve number type throughout this process.
+	err := yaml.Unmarshal(j, &jsonObj)
 	if err != nil {
 		return nil, err
 	}
@@ -108,12 +113,11 @@ func convertToJSONableObject(yamlObj interface{}, jsonTarget *reflect.Value) (in
 		}
 	}
 
-	// If yamlObj is a number, check if jsonTarget is a string - if so, coerce.
-	// Else return normal.
+	// If yamlObj is a number or a boolean, check if jsonTarget is a string -
+	// if so, coerce.  Else return normal.
 	// If yamlObj is a map or array, find the field that each key is
 	// unmarshaling to, and when you recurse pass the reflect.Value for that
 	// field back into this function.
-
 	switch typedYAMLObj := yamlObj.(type) {
 	case map[interface{}]interface{}:
 		// JSON does not support arbitrary keys in a map, so we must convert
@@ -150,6 +154,12 @@ func convertToJSONableObject(yamlObj interface{}, jsonTarget *reflect.Value) (in
 					s = ".nan"
 				}
 				keyString = s
+			case bool:
+				if typedKey {
+					keyString = "true"
+				} else {
+					keyString = "false"
+				}
 			default:
 				return nil, fmt.Errorf("Unsupported map key of type: %s, key: %+#v, value: %+#v",
 					reflect.TypeOf(k), k, v)
@@ -229,15 +239,21 @@ func convertToJSONableObject(yamlObj interface{}, jsonTarget *reflect.Value) (in
 			// Based on my reading of go-yaml, it may return int, int64,
 			// float64, or uint64.
 			var s string
-			switch num := typedYAMLObj.(type) {
+			switch typedVal := typedYAMLObj.(type) {
 			case int:
-				s = strconv.FormatInt(int64(num), 10)
+				s = strconv.FormatInt(int64(typedVal), 10)
 			case int64:
-				s = strconv.FormatInt(num, 10)
+				s = strconv.FormatInt(typedVal, 10)
 			case float64:
-				s = strconv.FormatFloat(num, 'g', -1, 32)
+				s = strconv.FormatFloat(typedVal, 'g', -1, 32)
 			case uint64:
-				s = strconv.FormatUint(num, 10)
+				s = strconv.FormatUint(typedVal, 10)
+			case bool:
+				if typedVal {
+					s = "true"
+				} else {
+					s = "false"
+				}
 			}
 			if len(s) > 0 {
 				yamlObj = interface{}(s)

@@ -39,8 +39,10 @@ type Interface interface {
 	EventNamespacer
 	LimitRangesNamespacer
 	ResourceQuotasNamespacer
-	ResourceQuotaUsagesNamespacer
+	SecretsNamespacer
 	NamespacesInterface
+	PersistentVolumesInterface
+	PersistentVolumeClaimsNamespacer
 }
 
 func (c *Client) ReplicationControllers(namespace string) ReplicationControllerInterface {
@@ -66,7 +68,6 @@ func (c *Client) Pods(namespace string) PodInterface {
 func (c *Client) Services(namespace string) ServiceInterface {
 	return newServices(c, namespace)
 }
-
 func (c *Client) LimitRanges(namespace string) LimitRangeInterface {
 	return newLimitRanges(c, namespace)
 }
@@ -75,12 +76,20 @@ func (c *Client) ResourceQuotas(namespace string) ResourceQuotaInterface {
 	return newResourceQuotas(c, namespace)
 }
 
-func (c *Client) ResourceQuotaUsages(namespace string) ResourceQuotaUsageInterface {
-	return newResourceQuotaUsages(c, namespace)
+func (c *Client) Secrets(namespace string) SecretsInterface {
+	return newSecrets(c, namespace)
 }
 
 func (c *Client) Namespaces() NamespaceInterface {
 	return newNamespaces(c)
+}
+
+func (c *Client) PersistentVolumes() PersistentVolumeInterface {
+	return newPersistentVolumes(c)
+}
+
+func (c *Client) PersistentVolumeClaims(namespace string) PersistentVolumeClaimInterface {
+	return newPersistentVolumeClaims(c, namespace)
 }
 
 // VersionInterface has a method to retrieve the server version.
@@ -148,9 +157,4 @@ func IsTimeout(err error) bool {
 		return true
 	}
 	return false
-}
-
-// preV1Beta3 returns true if the provided API version is an API introduced before v1beta3.
-func preV1Beta3(version string) bool {
-	return version == "v1beta1" || version == "v1beta2"
 }

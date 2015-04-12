@@ -18,7 +18,7 @@ package cache
 
 import (
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/client"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/labels"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/fields"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/runtime"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/watch"
 )
@@ -37,13 +37,23 @@ type ListWatch struct {
 	WatchFunc WatchFunc
 }
 
-// ListWatchFromClient creates a new ListWatch from the specified client, resource, namespace and field selector
-func NewListWatchFromClient(client *client.Client, resource string, namespace string, fieldSelector labels.Selector) *ListWatch {
+// NewListWatchFromClient creates a new ListWatch from the specified client, resource, namespace and field selector.
+func NewListWatchFromClient(c *client.Client, resource string, namespace string, fieldSelector fields.Selector) *ListWatch {
 	listFunc := func() (runtime.Object, error) {
-		return client.Get().Namespace(namespace).Resource(resource).SelectorParam("fields", fieldSelector).Do().Get()
+		return c.Get().
+			Namespace(namespace).
+			Resource(resource).
+			FieldsSelectorParam(fieldSelector).
+			Do().
+			Get()
 	}
 	watchFunc := func(resourceVersion string) (watch.Interface, error) {
-		return client.Get().Prefix("watch").Namespace(namespace).Resource(resource).SelectorParam("fields", fieldSelector).Param("resourceVersion", resourceVersion).Watch()
+		return c.Get().
+			Prefix("watch").
+			Namespace(namespace).
+			Resource(resource).
+			FieldsSelectorParam(fieldSelector).
+			Param("resourceVersion", resourceVersion).Watch()
 	}
 	return &ListWatch{ListFunc: listFunc, WatchFunc: watchFunc}
 }

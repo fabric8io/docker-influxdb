@@ -127,14 +127,33 @@ func TestIsContextNotFound(t *testing.T) {
 	if !IsContextNotFound(err) {
 		t.Errorf("Expected context not found, but got %v", err)
 	}
+	if !IsConfigurationInvalid(err) {
+		t.Errorf("Expected configuration invalid, but got %v", err)
+	}
 }
+
+func TestIsConfigurationInvalid(t *testing.T) {
+	if newErrConfigurationInvalid([]error{}) != nil {
+		t.Errorf("unexpected error")
+	}
+	if newErrConfigurationInvalid([]error{ErrNoContext}) == ErrNoContext {
+		t.Errorf("unexpected error")
+	}
+	if newErrConfigurationInvalid([]error{ErrNoContext, ErrNoContext}) == nil {
+		t.Errorf("unexpected error")
+	}
+	if !IsConfigurationInvalid(newErrConfigurationInvalid([]error{ErrNoContext, ErrNoContext})) {
+		t.Errorf("unexpected error")
+	}
+}
+
 func TestValidateMissingReferencesConfig(t *testing.T) {
 	config := clientcmdapi.NewConfig()
 	config.CurrentContext = "anything"
 	config.Contexts["anything"] = clientcmdapi.Context{Cluster: "missing", AuthInfo: "missing"}
 	test := configValidationTest{
 		config:                 config,
-		expectedErrorSubstring: []string{"user, missing, was not found for Context anything", "cluster, missing, was not found for Context anything"},
+		expectedErrorSubstring: []string{"user \"missing\" was not found for context \"anything\"", "cluster \"missing\" was not found for context \"anything\""},
 	}
 
 	test.testContext("anything", t)
@@ -146,7 +165,7 @@ func TestValidateEmptyContext(t *testing.T) {
 	config.Contexts["anything"] = clientcmdapi.Context{}
 	test := configValidationTest{
 		config:                 config,
-		expectedErrorSubstring: []string{"user was not specified for Context anything", "cluster was not specified for Context anything"},
+		expectedErrorSubstring: []string{"user was not specified for context \"anything\"", "cluster was not specified for context \"anything\""},
 	}
 
 	test.testContext("anything", t)
@@ -244,6 +263,25 @@ func TestValidateCertFilesNotFoundAuthInfo(t *testing.T) {
 	test.testAuthInfo("error", t)
 	test.testConfig(t)
 }
+func TestValidateCertDataOverridesFiles(t *testing.T) {
+	tempFile, _ := ioutil.TempFile("", "")
+	defer os.Remove(tempFile.Name())
+
+	config := clientcmdapi.NewConfig()
+	config.AuthInfos["clean"] = clientcmdapi.AuthInfo{
+		ClientCertificate:     tempFile.Name(),
+		ClientCertificateData: []byte("certdata"),
+		ClientKey:             tempFile.Name(),
+		ClientKeyData:         []byte("keydata"),
+	}
+	test := configValidationTest{
+		config:                 config,
+		expectedErrorSubstring: []string{"client-cert-data and client-cert are both specified", "client-key-data and client-key are both specified"},
+	}
+
+	test.testAuthInfo("clean", t)
+	test.testConfig(t)
+}
 func TestValidateCleanCertFilesAuthInfo(t *testing.T) {
 	tempFile, _ := ioutil.TempFile("", "")
 	defer os.Remove(tempFile.Name())
@@ -285,6 +323,21 @@ func TestValidateCleanTokenAuthInfo(t *testing.T) {
 	}
 
 	test.testAuthInfo("clean", t)
+	test.testConfig(t)
+}
+
+func TestValidateMultipleMethodsAuthInfo(t *testing.T) {
+	config := clientcmdapi.NewConfig()
+	config.AuthInfos["error"] = clientcmdapi.AuthInfo{
+		Token:    "token",
+		Username: "username",
+	}
+	test := configValidationTest{
+		config:                 config,
+		expectedErrorSubstring: []string{"more than one authentication method", "token", "basicAuth"},
+	}
+
+	test.testAuthInfo("error", t)
 	test.testConfig(t)
 }
 
@@ -342,6 +395,9 @@ func (c configValidationTest) testConfig(t *testing.T) {
 				if err != nil && !strings.Contains(err.Error(), curr) {
 					t.Errorf("Expected error containing: %v, but got %v", c.expectedErrorSubstring, err)
 				}
+			}
+			if !IsConfigurationInvalid(err) {
+				t.Errorf("all errors should be configuration invalid: %v", err)
 			}
 		}
 	} else {

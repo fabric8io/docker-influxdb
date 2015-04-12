@@ -25,14 +25,29 @@ import (
 
 func init() {
 	api.Scheme.AddDefaultingFuncs(
-		func(obj *Volume) {
-			if util.AllPtrFieldsNil(&obj.Source) {
-				obj.Source = VolumeSource{
-					EmptyDir: &EmptyDir{},
+		func(obj *ReplicationController) {
+			var labels map[string]string
+			if obj.Spec.Template != nil {
+				labels = obj.Spec.Template.Labels
+			}
+			// TODO: support templates defined elsewhere when we support them in the API
+			if labels != nil {
+				if len(obj.Spec.Selector) == 0 {
+					obj.Spec.Selector = labels
+				}
+				if len(obj.Labels) == 0 {
+					obj.Labels = labels
 				}
 			}
 		},
-		func(obj *Port) {
+		func(obj *Volume) {
+			if util.AllPtrFieldsNil(&obj.VolumeSource) {
+				obj.VolumeSource = VolumeSource{
+					EmptyDir: &EmptyDirVolumeSource{},
+				}
+			}
+		},
+		func(obj *ContainerPort) {
 			if obj.Protocol == "" {
 				obj.Protocol = ProtocolTCP
 			}
@@ -52,22 +67,29 @@ func init() {
 				obj.TerminationMessagePath = TerminationMessagePathDefault
 			}
 		},
-		func(obj *RestartPolicy) {
-			if util.AllPtrFieldsNil(obj) {
-				obj.Always = &RestartPolicyAlways{}
+		func(obj *ServiceSpec) {
+			if obj.SessionAffinity == "" {
+				obj.SessionAffinity = AffinityTypeNone
 			}
-		},
-		func(obj *Service) {
-			if obj.Spec.Protocol == "" {
-				obj.Spec.Protocol = ProtocolTCP
-			}
-			if obj.Spec.SessionAffinity == "" {
-				obj.Spec.SessionAffinity = AffinityTypeNone
+			for i := range obj.Ports {
+				sp := &obj.Ports[i]
+				if sp.Protocol == "" {
+					sp.Protocol = ProtocolTCP
+				}
+				if sp.TargetPort == util.NewIntOrStringFromInt(0) || sp.TargetPort == util.NewIntOrStringFromString("") {
+					sp.TargetPort = util.NewIntOrStringFromInt(sp.Port)
+				}
 			}
 		},
 		func(obj *PodSpec) {
 			if obj.DNSPolicy == "" {
 				obj.DNSPolicy = DNSClusterFirst
+			}
+			if obj.RestartPolicy == "" {
+				obj.RestartPolicy = RestartPolicyAlways
+			}
+			if obj.HostNetwork {
+				defaultHostNetworkPorts(&obj.Containers)
 			}
 		},
 		func(obj *Probe) {
@@ -75,5 +97,47 @@ func init() {
 				obj.TimeoutSeconds = 1
 			}
 		},
+		func(obj *Secret) {
+			if obj.Type == "" {
+				obj.Type = SecretTypeOpaque
+			}
+		},
+		func(obj *Endpoints) {
+			for i := range obj.Subsets {
+				ss := &obj.Subsets[i]
+				for i := range ss.Ports {
+					ep := &ss.Ports[i]
+					if ep.Protocol == "" {
+						ep.Protocol = ProtocolTCP
+					}
+				}
+			}
+		},
+		func(obj *HTTPGetAction) {
+			if obj.Path == "" {
+				obj.Path = "/"
+			}
+		},
+		func(obj *NamespaceStatus) {
+			if obj.Phase == "" {
+				obj.Phase = NamespaceActive
+			}
+		},
+		func(obj *Node) {
+			if obj.Spec.ExternalID == "" {
+				obj.Spec.ExternalID = obj.Name
+			}
+		},
 	)
+}
+
+// With host networking default all container ports to host ports.
+func defaultHostNetworkPorts(containers *[]Container) {
+	for i := range *containers {
+		for j := range (*containers)[i].Ports {
+			if (*containers)[i].Ports[j].HostPort == 0 {
+				(*containers)[i].Ports[j].HostPort = (*containers)[i].Ports[j].ContainerPort
+			}
+		}
+	}
 }

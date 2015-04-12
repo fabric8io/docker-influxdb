@@ -17,9 +17,10 @@ limitations under the License.
 package record
 
 import (
+	"testing"
+
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
-	"testing"
 )
 
 func TestAddOrUpdateEventNoExisting(t *testing.T) {
@@ -29,11 +30,11 @@ func TestAddOrUpdateEventNoExisting(t *testing.T) {
 		Reason:  "my reasons are many",
 		Message: "my message is love",
 		InvolvedObject: api.ObjectReference{
-			Kind:       "BoundPod",
+			Kind:       "Pod",
 			Name:       "awesome.name",
 			Namespace:  "betterNamespace",
 			UID:        "C934D34AFB20242",
-			APIVersion: "v1beta1",
+			APIVersion: "version",
 		},
 		Source: api.EventSource{
 			Component: "kubelet",
@@ -143,11 +144,11 @@ func TestGetEventExisting(t *testing.T) {
 		Reason:  "do I exist",
 		Message: "I do, oh my",
 		InvolvedObject: api.ObjectReference{
-			Kind:       "BoundPod",
+			Kind:       "Pod",
 			Name:       "clever.name.here",
 			Namespace:  "spaceOfName",
 			UID:        "D933D32AFB2A238",
-			APIVersion: "v1beta1",
+			APIVersion: "version",
 		},
 		Source: api.EventSource{
 			Component: "kubelet",
