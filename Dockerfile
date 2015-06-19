@@ -7,6 +7,7 @@ RUN rpm -ivh https://s3.amazonaws.com/influxdb/influxdb-0.8.8-1.x86_64.rpm
 
 ADD config.toml /config/config.toml
 ADD run.sh /run.sh
+RUN chmod 777 /config
 
 ENV PRE_CREATE_DB **None**
 ENV SSL_SUPPORT **False**
