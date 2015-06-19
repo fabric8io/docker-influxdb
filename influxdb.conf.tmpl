@@ -24,6 +24,12 @@ reporting-disabled = true
   heartbeat-timeout = "1s"
   leader-lease-timeout = "500ms"
   commit-timeout = "50ms"
+  peers = [
+    {{ range $index, $seed := .Seeds }}
+      {{if $index}},{{end}}
+      "{{$seed}}"
+    {{end}}
+  ]
 
 ###
 ### [data]

@@ -19,6 +19,7 @@ import (
 const defaultBrokerPort = 8086
 
 type context struct {
+	Seeds []string
 }
 
 func (c *context) Env() map[string]string {
@@ -38,21 +39,6 @@ func main() {
 		} else {
 			brokerPort = parsedBrokerPort
 		}
-	}
-
-	if len(os.Getenv("INFLUXDB_SEEDS")) == 0 {
-		seeds := discoverSeeds()
-
-		var formattedSeeds []string
-		for _, seedIP := range seeds {
-			formattedSeeds = append(formattedSeeds, fmt.Sprintf("http://%v:%d", seedIP, brokerPort))
-		}
-
-		os.Setenv("INFLUXDB_SEEDS", strings.Join(formattedSeeds, ","))
-	}
-
-	if len(os.Getenv("INFLUXDB_SEEDS")) == 0 {
-		os.Setenv("INFLUXDB_SEEDS", "")
 	}
 
 	addrs, err := net.InterfaceAddrs()
@@ -78,7 +64,18 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	t.Execute(file, &context{})
+
+	var seeds []string
+	if len(os.Getenv("INFLUXDB_SEEDS")) == 0 {
+		discoveredSeeds := discoverSeeds()
+		for _, seedIP := range discoveredSeeds {
+			seeds = append(seeds, fmt.Sprintf("http://%v:%d", seedIP, brokerPort))
+		}
+	} else {
+		seeds = strings.Split(os.Getenv("INFLUXDB_SEEDS"), ",")
+	}
+
+	t.Execute(file, &context{Seeds: seeds})
 	file.Close()
 
 	cmdStr := "exec /opt/influxdb/influxd -config /opt/influxdb/influxdb.conf"
