@@ -1,5 +1,5 @@
 /*
-Copyright 2014 Google Inc. All rights reserved.
+Copyright 2014 The Kubernetes Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,44 +19,45 @@ package v1beta2
 import (
 	"fmt"
 	"net"
+	"reflect"
 	"strconv"
 
-	newer "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/resource"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/conversion"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
 )
 
-func init() {
+func addConversionFuncs() {
 	// Our TypeMeta was split into two different structs.
-	newer.Scheme.AddStructFieldConversion(TypeMeta{}, "TypeMeta", newer.TypeMeta{}, "TypeMeta")
-	newer.Scheme.AddStructFieldConversion(TypeMeta{}, "TypeMeta", newer.ObjectMeta{}, "ObjectMeta")
-	newer.Scheme.AddStructFieldConversion(TypeMeta{}, "TypeMeta", newer.ListMeta{}, "ListMeta")
+	api.Scheme.AddStructFieldConversion(TypeMeta{}, "TypeMeta", api.TypeMeta{}, "TypeMeta")
+	api.Scheme.AddStructFieldConversion(TypeMeta{}, "TypeMeta", api.ObjectMeta{}, "ObjectMeta")
+	api.Scheme.AddStructFieldConversion(TypeMeta{}, "TypeMeta", api.ListMeta{}, "ListMeta")
 
-	newer.Scheme.AddStructFieldConversion(newer.TypeMeta{}, "TypeMeta", TypeMeta{}, "TypeMeta")
-	newer.Scheme.AddStructFieldConversion(newer.ObjectMeta{}, "ObjectMeta", TypeMeta{}, "TypeMeta")
-	newer.Scheme.AddStructFieldConversion(newer.ListMeta{}, "ListMeta", TypeMeta{}, "TypeMeta")
-	newer.Scheme.AddStructFieldConversion(newer.Endpoints{}, "Endpoints", Endpoints{}, "Endpoints")
+	api.Scheme.AddStructFieldConversion(api.TypeMeta{}, "TypeMeta", TypeMeta{}, "TypeMeta")
+	api.Scheme.AddStructFieldConversion(api.ObjectMeta{}, "ObjectMeta", TypeMeta{}, "TypeMeta")
+	api.Scheme.AddStructFieldConversion(api.ListMeta{}, "ListMeta", TypeMeta{}, "TypeMeta")
+	api.Scheme.AddStructFieldConversion(api.Endpoints{}, "Endpoints", Endpoints{}, "Endpoints")
 
 	// TODO: scope this to a specific type once that becomes available and remove the Event conversion functions below
-	// newer.Scheme.AddStructFieldConversion(string(""), "Status", string(""), "Condition")
-	// newer.Scheme.AddStructFieldConversion(string(""), "Condition", string(""), "Status")
+	// api.Scheme.AddStructFieldConversion(string(""), "Status", string(""), "Condition")
+	// api.Scheme.AddStructFieldConversion(string(""), "Condition", string(""), "Status")
 
-	err := newer.Scheme.AddConversionFuncs(
+	err := api.Scheme.AddConversionFuncs(
 		// TypeMeta must be split into two objects
-		func(in *newer.TypeMeta, out *TypeMeta, s conversion.Scope) error {
+		func(in *api.TypeMeta, out *TypeMeta, s conversion.Scope) error {
 			out.Kind = in.Kind
 			out.APIVersion = in.APIVersion
 			return nil
 		},
-		func(in *TypeMeta, out *newer.TypeMeta, s conversion.Scope) error {
+		func(in *TypeMeta, out *api.TypeMeta, s conversion.Scope) error {
 			out.Kind = in.Kind
 			out.APIVersion = in.APIVersion
 			return nil
 		},
 
 		// ListMeta must be converted to TypeMeta
-		func(in *newer.ListMeta, out *TypeMeta, s conversion.Scope) error {
+		func(in *api.ListMeta, out *TypeMeta, s conversion.Scope) error {
 			out.SelfLink = in.SelfLink
 			if len(in.ResourceVersion) > 0 {
 				v, err := strconv.ParseUint(in.ResourceVersion, 10, 64)
@@ -67,7 +68,7 @@ func init() {
 			}
 			return nil
 		},
-		func(in *TypeMeta, out *newer.ListMeta, s conversion.Scope) error {
+		func(in *TypeMeta, out *api.ListMeta, s conversion.Scope) error {
 			out.SelfLink = in.SelfLink
 			if in.ResourceVersion != 0 {
 				out.ResourceVersion = strconv.FormatUint(in.ResourceVersion, 10)
@@ -78,7 +79,7 @@ func init() {
 		},
 
 		// ObjectMeta must be converted to TypeMeta
-		func(in *newer.ObjectMeta, out *TypeMeta, s conversion.Scope) error {
+		func(in *api.ObjectMeta, out *TypeMeta, s conversion.Scope) error {
 			out.Namespace = in.Namespace
 			out.ID = in.Name
 			out.GenerateName = in.GenerateName
@@ -95,7 +96,7 @@ func init() {
 			}
 			return s.Convert(&in.Annotations, &out.Annotations, 0)
 		},
-		func(in *TypeMeta, out *newer.ObjectMeta, s conversion.Scope) error {
+		func(in *TypeMeta, out *api.ObjectMeta, s conversion.Scope) error {
 			out.Namespace = in.Namespace
 			out.Name = in.ID
 			out.GenerateName = in.GenerateName
@@ -112,22 +113,22 @@ func init() {
 		},
 
 		// Convert all to the new PodPhase constants
-		func(in *newer.PodPhase, out *PodStatus, s conversion.Scope) error {
+		func(in *api.PodPhase, out *PodStatus, s conversion.Scope) error {
 			switch *in {
 			case "":
 				*out = ""
-			case newer.PodPending:
+			case api.PodPending:
 				*out = PodWaiting
-			case newer.PodRunning:
+			case api.PodRunning:
 				*out = PodRunning
-			case newer.PodSucceeded:
+			case api.PodSucceeded:
 				*out = PodSucceeded
-			case newer.PodFailed:
+			case api.PodFailed:
 				*out = PodTerminated
-			case newer.PodUnknown:
+			case api.PodUnknown:
 				*out = PodUnknown
 			default:
-				return &newer.ConversionError{
+				return &api.ConversionError{
 					In:      in,
 					Out:     out,
 					Message: "The string provided is not a valid PodPhase constant value",
@@ -137,23 +138,23 @@ func init() {
 			return nil
 		},
 
-		func(in *PodStatus, out *newer.PodPhase, s conversion.Scope) error {
+		func(in *PodStatus, out *api.PodPhase, s conversion.Scope) error {
 			switch *in {
 			case "":
 				*out = ""
 			case PodWaiting:
-				*out = newer.PodPending
+				*out = api.PodPending
 			case PodRunning:
-				*out = newer.PodRunning
+				*out = api.PodRunning
 			case PodTerminated:
 				// Older API versions did not contain enough info to map to PodSucceeded
-				*out = newer.PodFailed
+				*out = api.PodFailed
 			case PodSucceeded:
-				*out = newer.PodSucceeded
+				*out = api.PodSucceeded
 			case PodUnknown:
-				*out = newer.PodUnknown
+				*out = api.PodUnknown
 			default:
-				return &newer.ConversionError{
+				return &api.ConversionError{
 					In:      in,
 					Out:     out,
 					Message: "The string provided is not a valid PodPhase constant value",
@@ -163,7 +164,7 @@ func init() {
 		},
 
 		// Convert all the standard objects
-		func(in *newer.Pod, out *Pod, s conversion.Scope) error {
+		func(in *api.Pod, out *Pod, s conversion.Scope) error {
 			if err := s.Convert(&in.TypeMeta, &out.TypeMeta, 0); err != nil {
 				return err
 			}
@@ -179,6 +180,7 @@ func init() {
 			}
 			out.DesiredState.Host = in.Spec.Host
 			out.CurrentState.Host = in.Spec.Host
+			out.ServiceAccount = in.Spec.ServiceAccount
 			if err := s.Convert(&in.Status, &out.CurrentState, 0); err != nil {
 				return err
 			}
@@ -187,7 +189,7 @@ func init() {
 			}
 			return nil
 		},
-		func(in *Pod, out *newer.Pod, s conversion.Scope) error {
+		func(in *Pod, out *api.Pod, s conversion.Scope) error {
 			if err := s.Convert(&in.TypeMeta, &out.TypeMeta, 0); err != nil {
 				return err
 			}
@@ -200,6 +202,7 @@ func init() {
 			if err := s.Convert(&in.DesiredState.Manifest, &out.Spec, 0); err != nil {
 				return err
 			}
+			out.Spec.ServiceAccount = in.ServiceAccount
 			out.Spec.Host = in.DesiredState.Host
 			if err := s.Convert(&in.CurrentState, &out.Status, 0); err != nil {
 				return err
@@ -210,7 +213,7 @@ func init() {
 			return nil
 		},
 
-		func(in *newer.ReplicationController, out *ReplicationController, s conversion.Scope) error {
+		func(in *api.ReplicationController, out *ReplicationController, s conversion.Scope) error {
 			if err := s.Convert(&in.TypeMeta, &out.TypeMeta, 0); err != nil {
 				return err
 			}
@@ -227,7 +230,7 @@ func init() {
 			out.CurrentState.Replicas = in.Status.Replicas
 			return nil
 		},
-		func(in *ReplicationController, out *newer.ReplicationController, s conversion.Scope) error {
+		func(in *ReplicationController, out *api.ReplicationController, s conversion.Scope) error {
 			if err := s.Convert(&in.TypeMeta, &out.TypeMeta, 0); err != nil {
 				return err
 			}
@@ -245,13 +248,13 @@ func init() {
 			return nil
 		},
 
-		func(in *newer.ReplicationControllerSpec, out *ReplicationControllerState, s conversion.Scope) error {
+		func(in *api.ReplicationControllerSpec, out *ReplicationControllerState, s conversion.Scope) error {
 			out.Replicas = in.Replicas
 			if err := s.Convert(&in.Selector, &out.ReplicaSelector, 0); err != nil {
 				return err
 			}
 			if in.TemplateRef != nil && in.Template == nil {
-				return &newer.ConversionError{
+				return &api.ConversionError{
 					In:      in,
 					Out:     out,
 					Message: "objects with a template ref cannot be converted to older objects, must populate template",
@@ -264,23 +267,24 @@ func init() {
 			}
 			return nil
 		},
-		func(in *ReplicationControllerState, out *newer.ReplicationControllerSpec, s conversion.Scope) error {
+		func(in *ReplicationControllerState, out *api.ReplicationControllerSpec, s conversion.Scope) error {
 			out.Replicas = in.Replicas
 			if err := s.Convert(&in.ReplicaSelector, &out.Selector, 0); err != nil {
 				return err
 			}
-			out.Template = &newer.PodTemplateSpec{}
+			out.Template = &api.PodTemplateSpec{}
 			if err := s.Convert(&in.PodTemplate, out.Template, 0); err != nil {
 				return err
 			}
 			return nil
 		},
 
-		func(in *newer.PodTemplateSpec, out *PodTemplate, s conversion.Scope) error {
+		func(in *api.PodTemplateSpec, out *PodTemplate, s conversion.Scope) error {
 			if err := s.Convert(&in.Spec, &out.DesiredState.Manifest, 0); err != nil {
 				return err
 			}
 			out.DesiredState.Host = in.Spec.Host
+			out.ServiceAccount = in.Spec.ServiceAccount
 			if err := s.Convert(&in.Spec.NodeSelector, &out.NodeSelector, 0); err != nil {
 				return err
 			}
@@ -292,11 +296,12 @@ func init() {
 			}
 			return nil
 		},
-		func(in *PodTemplate, out *newer.PodTemplateSpec, s conversion.Scope) error {
+		func(in *PodTemplate, out *api.PodTemplateSpec, s conversion.Scope) error {
 			if err := s.Convert(&in.DesiredState.Manifest, &out.Spec, 0); err != nil {
 				return err
 			}
 			out.Spec.Host = in.DesiredState.Host
+			out.Spec.ServiceAccount = in.ServiceAccount
 			if err := s.Convert(&in.NodeSelector, &out.Spec.NodeSelector, 0); err != nil {
 				return err
 			}
@@ -308,10 +313,10 @@ func init() {
 			}
 			return nil
 		},
-		// Converts internal Container to v1beta1.Container.
+		// Converts internal Container to v1beta2.Container.
 		// Fields 'CPU' and 'Memory' are not present in the internal Container object.
 		// Hence the need for a custom conversion function.
-		func(in *newer.Container, out *Container, s conversion.Scope) error {
+		func(in *api.Container, out *Container, s conversion.Scope) error {
 			if err := s.Convert(&in.Name, &out.Name, 0); err != nil {
 				return err
 			}
@@ -357,20 +362,25 @@ func init() {
 			if err := s.Convert(&in.TerminationMessagePath, &out.TerminationMessagePath, 0); err != nil {
 				return err
 			}
-			if err := s.Convert(&in.Privileged, &out.Privileged, 0); err != nil {
-				return err
-			}
 			if err := s.Convert(&in.ImagePullPolicy, &out.ImagePullPolicy, 0); err != nil {
 				return err
 			}
-			if err := s.Convert(&in.Capabilities, &out.Capabilities, 0); err != nil {
+			if err := s.Convert(&in.SecurityContext, &out.SecurityContext, 0); err != nil {
 				return err
+			}
+			// now that we've converted set the container field from security context
+			if out.SecurityContext != nil && out.SecurityContext.Privileged != nil {
+				out.Privileged = *out.SecurityContext.Privileged
+			}
+			// now that we've converted set the container field from security context
+			if out.SecurityContext != nil && out.SecurityContext.Capabilities != nil {
+				out.Capabilities = *out.SecurityContext.Capabilities
 			}
 			return nil
 		},
 		// Internal API does not support CPU to be specified via an explicit field.
 		// Hence it must be stored in Container.Resources.
-		func(in *int, out *newer.ResourceList, s conversion.Scope) error {
+		func(in *int, out *api.ResourceList, s conversion.Scope) error {
 			if *in == 0 {
 				return nil
 			}
@@ -378,13 +388,13 @@ func init() {
 			if err := s.Convert(in, &quantity, 0); err != nil {
 				return err
 			}
-			(*out)[newer.ResourceCPU] = quantity
+			(*out)[api.ResourceCPU] = quantity
 
 			return nil
 		},
 		// Internal API does not support Memory to be specified via an explicit field.
 		// Hence it must be stored in Container.Resources.
-		func(in *int64, out *newer.ResourceList, s conversion.Scope) error {
+		func(in *int64, out *api.ResourceList, s conversion.Scope) error {
 			if *in == 0 {
 				return nil
 			}
@@ -392,14 +402,14 @@ func init() {
 			if err := s.Convert(in, &quantity, 0); err != nil {
 				return err
 			}
-			(*out)[newer.ResourceMemory] = quantity
+			(*out)[api.ResourceMemory] = quantity
 
 			return nil
 		},
-		// Converts v1beta1.Container to internal newer.Container.
-		// Fields 'CPU' and 'Memory' are not present in the internal newer.Container object.
+		// Converts v1beta2.Container to internal api.Container.
+		// Fields 'CPU' and 'Memory' are not present in the internal api.Container object.
 		// Hence the need for a custom conversion function.
-		func(in *Container, out *newer.Container, s conversion.Scope) error {
+		func(in *Container, out *api.Container, s conversion.Scope) error {
 			if err := s.Convert(&in.Name, &out.Name, 0); err != nil {
 				return err
 			}
@@ -445,18 +455,28 @@ func init() {
 			if err := s.Convert(&in.TerminationMessagePath, &out.TerminationMessagePath, 0); err != nil {
 				return err
 			}
-			if err := s.Convert(&in.Privileged, &out.Privileged, 0); err != nil {
-				return err
-			}
 			if err := s.Convert(&in.ImagePullPolicy, &out.ImagePullPolicy, 0); err != nil {
 				return err
 			}
-			if err := s.Convert(&in.Capabilities, &out.Capabilities, 0); err != nil {
+			if in.SecurityContext != nil {
+				if in.SecurityContext.Capabilities != nil {
+					if !reflect.DeepEqual(in.SecurityContext.Capabilities.Add, in.Capabilities.Add) ||
+						!reflect.DeepEqual(in.SecurityContext.Capabilities.Drop, in.Capabilities.Drop) {
+						return fmt.Errorf("container capability settings do not match security context settings, cannot convert")
+					}
+				}
+				if in.SecurityContext.Privileged != nil {
+					if in.Privileged != *in.SecurityContext.Privileged {
+						return fmt.Errorf("container privileged settings do not match security context settings, cannot convert")
+					}
+				}
+			}
+			if err := s.Convert(&in.SecurityContext, &out.SecurityContext, 0); err != nil {
 				return err
 			}
 			return nil
 		},
-		func(in *newer.PodSpec, out *ContainerManifest, s conversion.Scope) error {
+		func(in *api.PodSpec, out *ContainerManifest, s conversion.Scope) error {
 			if err := s.Convert(&in.Volumes, &out.Volumes, 0); err != nil {
 				return err
 			}
@@ -465,13 +485,24 @@ func init() {
 			}
 			if err := s.Convert(&in.RestartPolicy, &out.RestartPolicy, 0); err != nil {
 				return err
+			}
+			if err := s.Convert(&in.ImagePullSecrets, &out.ImagePullSecrets, 0); err != nil {
+				return err
+			}
+			if in.TerminationGracePeriodSeconds != nil {
+				out.TerminationGracePeriodSeconds = new(int64)
+				*out.TerminationGracePeriodSeconds = *in.TerminationGracePeriodSeconds
+			}
+			if in.ActiveDeadlineSeconds != nil {
+				out.ActiveDeadlineSeconds = new(int64)
+				*out.ActiveDeadlineSeconds = *in.ActiveDeadlineSeconds
 			}
 			out.DNSPolicy = DNSPolicy(in.DNSPolicy)
 			out.Version = "v1beta2"
 			out.HostNetwork = in.HostNetwork
 			return nil
 		},
-		func(in *ContainerManifest, out *newer.PodSpec, s conversion.Scope) error {
+		func(in *ContainerManifest, out *api.PodSpec, s conversion.Scope) error {
 			if err := s.Convert(&in.Volumes, &out.Volumes, 0); err != nil {
 				return err
 			}
@@ -481,12 +512,23 @@ func init() {
 			if err := s.Convert(&in.RestartPolicy, &out.RestartPolicy, 0); err != nil {
 				return err
 			}
-			out.DNSPolicy = newer.DNSPolicy(in.DNSPolicy)
+			if err := s.Convert(&in.ImagePullSecrets, &out.ImagePullSecrets, 0); err != nil {
+				return err
+			}
+			if in.TerminationGracePeriodSeconds != nil {
+				out.TerminationGracePeriodSeconds = new(int64)
+				*out.TerminationGracePeriodSeconds = *in.TerminationGracePeriodSeconds
+			}
+			if in.ActiveDeadlineSeconds != nil {
+				out.ActiveDeadlineSeconds = new(int64)
+				*out.ActiveDeadlineSeconds = *in.ActiveDeadlineSeconds
+			}
+			out.DNSPolicy = api.DNSPolicy(in.DNSPolicy)
 			out.HostNetwork = in.HostNetwork
 			return nil
 		},
 
-		func(in *newer.PodStatus, out *PodState, s conversion.Scope) error {
+		func(in *api.PodStatus, out *PodState, s conversion.Scope) error {
 			if err := s.Convert(&in.Phase, &out.Status, 0); err != nil {
 				return err
 			}
@@ -501,7 +543,7 @@ func init() {
 			out.PodIP = in.PodIP
 			return nil
 		},
-		func(in *PodState, out *newer.PodStatus, s conversion.Scope) error {
+		func(in *PodState, out *api.PodStatus, s conversion.Scope) error {
 			if err := s.Convert(&in.Status, &out.Phase, 0); err != nil {
 				return err
 			}
@@ -517,7 +559,7 @@ func init() {
 			return nil
 		},
 
-		func(in *[]newer.ContainerStatus, out *PodInfo, s conversion.Scope) error {
+		func(in *[]api.ContainerStatus, out *PodInfo, s conversion.Scope) error {
 			*out = make(map[string]ContainerStatus)
 			for _, st := range *in {
 				v := ContainerStatus{}
@@ -528,9 +570,9 @@ func init() {
 			}
 			return nil
 		},
-		func(in *PodInfo, out *[]newer.ContainerStatus, s conversion.Scope) error {
+		func(in *PodInfo, out *[]api.ContainerStatus, s conversion.Scope) error {
 			for k, v := range *in {
-				st := newer.ContainerStatus{}
+				st := api.ContainerStatus{}
 				if err := s.Convert(&v, &st, 0); err != nil {
 					return err
 				}
@@ -540,7 +582,7 @@ func init() {
 			return nil
 		},
 
-		func(in *newer.ContainerStatus, out *ContainerStatus, s conversion.Scope) error {
+		func(in *api.ContainerStatus, out *ContainerStatus, s conversion.Scope) error {
 			if err := s.Convert(&in.State, &out.State, 0); err != nil {
 				return err
 			}
@@ -564,7 +606,7 @@ func init() {
 			}
 			return nil
 		},
-		func(in *ContainerStatus, out *newer.ContainerStatus, s conversion.Scope) error {
+		func(in *ContainerStatus, out *api.ContainerStatus, s conversion.Scope) error {
 			if err := s.Convert(&in.State, &out.State, 0); err != nil {
 				return err
 			}
@@ -589,7 +631,7 @@ func init() {
 			return nil
 		},
 
-		func(in *newer.PodStatusResult, out *PodStatusResult, s conversion.Scope) error {
+		func(in *api.PodStatusResult, out *PodStatusResult, s conversion.Scope) error {
 			if err := s.Convert(&in.TypeMeta, &out.TypeMeta, 0); err != nil {
 				return err
 			}
@@ -601,7 +643,7 @@ func init() {
 			}
 			return nil
 		},
-		func(in *PodStatusResult, out *newer.PodStatusResult, s conversion.Scope) error {
+		func(in *PodStatusResult, out *api.PodStatusResult, s conversion.Scope) error {
 			if err := s.Convert(&in.TypeMeta, &out.TypeMeta, 0); err != nil {
 				return err
 			}
@@ -614,21 +656,21 @@ func init() {
 			return nil
 		},
 
-		func(in *newer.PodSpec, out *PodState, s conversion.Scope) error {
+		func(in *api.PodSpec, out *PodState, s conversion.Scope) error {
 			if err := s.Convert(&in, &out.Manifest, 0); err != nil {
 				return err
 			}
 			out.Host = in.Host
 			return nil
 		},
-		func(in *PodState, out *newer.PodSpec, s conversion.Scope) error {
+		func(in *PodState, out *api.PodSpec, s conversion.Scope) error {
 			if err := s.Convert(&in.Manifest, &out, 0); err != nil {
 				return err
 			}
 			out.Host = in.Host
 			return nil
 		},
-		func(in *newer.Service, out *Service, s conversion.Scope) error {
+		func(in *api.Service, out *Service, s conversion.Scope) error {
 			if err := s.Convert(&in.TypeMeta, &out.TypeMeta, 0); err != nil {
 				return err
 			}
@@ -654,22 +696,31 @@ func init() {
 					Port:          in.Spec.Ports[i].Port,
 					Protocol:      Protocol(in.Spec.Ports[i].Protocol),
 					ContainerPort: in.Spec.Ports[i].TargetPort,
+					NodePort:      in.Spec.Ports[i].NodePort,
 				})
 			}
 
 			if err := s.Convert(&in.Spec.Selector, &out.Selector, 0); err != nil {
 				return err
 			}
-			out.CreateExternalLoadBalancer = in.Spec.CreateExternalLoadBalancer
-			out.PublicIPs = in.Spec.PublicIPs
+			out.PublicIPs = in.Spec.DeprecatedPublicIPs
 			out.PortalIP = in.Spec.PortalIP
 			if err := s.Convert(&in.Spec.SessionAffinity, &out.SessionAffinity, 0); err != nil {
 				return err
 			}
 
+			if err := s.Convert(&in.Status.LoadBalancer, &out.LoadBalancerStatus, 0); err != nil {
+				return err
+			}
+
+			if err := s.Convert(&in.Spec.Type, &out.Type, 0); err != nil {
+				return err
+			}
+			out.CreateExternalLoadBalancer = in.Spec.Type == api.ServiceTypeLoadBalancer
+
 			return nil
 		},
-		func(in *Service, out *newer.Service, s conversion.Scope) error {
+		func(in *Service, out *api.Service, s conversion.Scope) error {
 			if err := s.Convert(&in.TypeMeta, &out.TypeMeta, 0); err != nil {
 				return err
 			}
@@ -682,20 +733,21 @@ func init() {
 
 			if len(in.Ports) == 0 && in.Port != 0 {
 				// Use legacy fields to produce modern fields.
-				out.Spec.Ports = append(out.Spec.Ports, newer.ServicePort{
+				out.Spec.Ports = append(out.Spec.Ports, api.ServicePort{
 					Name:       in.PortName,
 					Port:       in.Port,
-					Protocol:   newer.Protocol(in.Protocol),
+					Protocol:   api.Protocol(in.Protocol),
 					TargetPort: in.ContainerPort,
 				})
 			} else {
 				// Use modern fields, ignore legacy.
 				for i := range in.Ports {
-					out.Spec.Ports = append(out.Spec.Ports, newer.ServicePort{
+					out.Spec.Ports = append(out.Spec.Ports, api.ServicePort{
 						Name:       in.Ports[i].Name,
 						Port:       in.Ports[i].Port,
-						Protocol:   newer.Protocol(in.Ports[i].Protocol),
+						Protocol:   api.Protocol(in.Ports[i].Protocol),
 						TargetPort: in.Ports[i].ContainerPort,
+						NodePort:   in.Ports[i].NodePort,
 					})
 				}
 			}
@@ -703,17 +755,32 @@ func init() {
 			if err := s.Convert(&in.Selector, &out.Spec.Selector, 0); err != nil {
 				return err
 			}
-			out.Spec.CreateExternalLoadBalancer = in.CreateExternalLoadBalancer
-			out.Spec.PublicIPs = in.PublicIPs
+			out.Spec.DeprecatedPublicIPs = in.PublicIPs
 			out.Spec.PortalIP = in.PortalIP
 			if err := s.Convert(&in.SessionAffinity, &out.Spec.SessionAffinity, 0); err != nil {
+				return err
+			}
+
+			if err := s.Convert(&in.LoadBalancerStatus, &out.Status.LoadBalancer, 0); err != nil {
+				return err
+			}
+
+			typeIn := in.Type
+			if typeIn == "" {
+				if in.CreateExternalLoadBalancer {
+					typeIn = ServiceTypeLoadBalancer
+				} else {
+					typeIn = ServiceTypeClusterIP
+				}
+			}
+			if err := s.Convert(&typeIn, &out.Spec.Type, 0); err != nil {
 				return err
 			}
 
 			return nil
 		},
 
-		func(in *newer.Node, out *Minion, s conversion.Scope) error {
+		func(in *api.Node, out *Minion, s conversion.Scope) error {
 			if err := s.Convert(&in.TypeMeta, &out.TypeMeta, 0); err != nil {
 				return err
 			}
@@ -737,7 +804,7 @@ func init() {
 			}
 
 			for _, address := range in.Status.Addresses {
-				if address.Type == newer.NodeLegacyHostIP {
+				if address.Type == api.NodeLegacyHostIP {
 					out.HostIP = address.Address
 				}
 			}
@@ -746,7 +813,7 @@ func init() {
 			out.Unschedulable = in.Spec.Unschedulable
 			return s.Convert(&in.Status.Capacity, &out.NodeResources.Capacity, 0)
 		},
-		func(in *Minion, out *newer.Node, s conversion.Scope) error {
+		func(in *Minion, out *api.Node, s conversion.Scope) error {
 			if err := s.Convert(&in.TypeMeta, &out.TypeMeta, 0); err != nil {
 				return err
 			}
@@ -770,8 +837,8 @@ func init() {
 			}
 
 			if in.HostIP != "" {
-				newer.AddToNodeAddresses(&out.Status.Addresses,
-					newer.NodeAddress{Type: newer.NodeLegacyHostIP, Address: in.HostIP})
+				api.AddToNodeAddresses(&out.Status.Addresses,
+					api.NodeAddress{Type: api.NodeLegacyHostIP, Address: in.HostIP})
 			}
 			out.Spec.PodCIDR = in.PodCIDR
 			out.Spec.ExternalID = in.ExternalID
@@ -779,7 +846,7 @@ func init() {
 			return s.Convert(&in.NodeResources.Capacity, &out.Status.Capacity, 0)
 		},
 
-		func(in *newer.LimitRange, out *LimitRange, s conversion.Scope) error {
+		func(in *api.LimitRange, out *LimitRange, s conversion.Scope) error {
 			if err := s.Convert(&in.TypeMeta, &out.TypeMeta, 0); err != nil {
 				return err
 			}
@@ -791,7 +858,7 @@ func init() {
 			}
 			return nil
 		},
-		func(in *LimitRange, out *newer.LimitRange, s conversion.Scope) error {
+		func(in *LimitRange, out *api.LimitRange, s conversion.Scope) error {
 			if err := s.Convert(&in.TypeMeta, &out.TypeMeta, 0); err != nil {
 				return err
 			}
@@ -804,7 +871,7 @@ func init() {
 			return nil
 		},
 
-		func(in *Namespace, out *newer.Namespace, s conversion.Scope) error {
+		func(in *Namespace, out *api.Namespace, s conversion.Scope) error {
 			if err := s.Convert(&in.TypeMeta, &out.TypeMeta, 0); err != nil {
 				return err
 			}
@@ -823,7 +890,7 @@ func init() {
 			return nil
 		},
 
-		func(in *newer.LimitRangeSpec, out *LimitRangeSpec, s conversion.Scope) error {
+		func(in *api.LimitRangeSpec, out *LimitRangeSpec, s conversion.Scope) error {
 			*out = LimitRangeSpec{}
 			out.Limits = make([]LimitRangeItem, len(in.Limits), len(in.Limits))
 			for i := range in.Limits {
@@ -833,9 +900,9 @@ func init() {
 			}
 			return nil
 		},
-		func(in *LimitRangeSpec, out *newer.LimitRangeSpec, s conversion.Scope) error {
-			*out = newer.LimitRangeSpec{}
-			out.Limits = make([]newer.LimitRangeItem, len(in.Limits), len(in.Limits))
+		func(in *LimitRangeSpec, out *api.LimitRangeSpec, s conversion.Scope) error {
+			*out = api.LimitRangeSpec{}
+			out.Limits = make([]api.LimitRangeItem, len(in.Limits), len(in.Limits))
 			for i := range in.Limits {
 				if err := s.Convert(&in.Limits[i], &out.Limits[i], 0); err != nil {
 					return err
@@ -844,7 +911,7 @@ func init() {
 			return nil
 		},
 
-		func(in *newer.LimitRangeItem, out *LimitRangeItem, s conversion.Scope) error {
+		func(in *api.LimitRangeItem, out *LimitRangeItem, s conversion.Scope) error {
 			*out = LimitRangeItem{}
 			out.Type = LimitType(in.Type)
 			if err := s.Convert(&in.Max, &out.Max, 0); err != nil {
@@ -858,9 +925,9 @@ func init() {
 			}
 			return nil
 		},
-		func(in *LimitRangeItem, out *newer.LimitRangeItem, s conversion.Scope) error {
-			*out = newer.LimitRangeItem{}
-			out.Type = newer.LimitType(in.Type)
+		func(in *LimitRangeItem, out *api.LimitRangeItem, s conversion.Scope) error {
+			*out = api.LimitRangeItem{}
+			out.Type = api.LimitType(in.Type)
 			if err := s.Convert(&in.Max, &out.Max, 0); err != nil {
 				return err
 			}
@@ -873,7 +940,7 @@ func init() {
 			return nil
 		},
 
-		func(in *newer.ResourceQuota, out *ResourceQuota, s conversion.Scope) error {
+		func(in *api.ResourceQuota, out *ResourceQuota, s conversion.Scope) error {
 			if err := s.Convert(&in.TypeMeta, &out.TypeMeta, 0); err != nil {
 				return err
 			}
@@ -891,7 +958,7 @@ func init() {
 			}
 			return nil
 		},
-		func(in *ResourceQuota, out *newer.ResourceQuota, s conversion.Scope) error {
+		func(in *ResourceQuota, out *api.ResourceQuota, s conversion.Scope) error {
 			if err := s.Convert(&in.TypeMeta, &out.TypeMeta, 0); err != nil {
 				return err
 			}
@@ -910,22 +977,22 @@ func init() {
 			return nil
 		},
 
-		func(in *newer.ResourceQuotaSpec, out *ResourceQuotaSpec, s conversion.Scope) error {
+		func(in *api.ResourceQuotaSpec, out *ResourceQuotaSpec, s conversion.Scope) error {
 			*out = ResourceQuotaSpec{}
 			if err := s.Convert(&in.Hard, &out.Hard, 0); err != nil {
 				return err
 			}
 			return nil
 		},
-		func(in *ResourceQuotaSpec, out *newer.ResourceQuotaSpec, s conversion.Scope) error {
-			*out = newer.ResourceQuotaSpec{}
+		func(in *ResourceQuotaSpec, out *api.ResourceQuotaSpec, s conversion.Scope) error {
+			*out = api.ResourceQuotaSpec{}
 			if err := s.Convert(&in.Hard, &out.Hard, 0); err != nil {
 				return err
 			}
 			return nil
 		},
 
-		func(in *newer.ResourceQuotaStatus, out *ResourceQuotaStatus, s conversion.Scope) error {
+		func(in *api.ResourceQuotaStatus, out *ResourceQuotaStatus, s conversion.Scope) error {
 			*out = ResourceQuotaStatus{}
 			if err := s.Convert(&in.Hard, &out.Hard, 0); err != nil {
 				return err
@@ -935,8 +1002,8 @@ func init() {
 			}
 			return nil
 		},
-		func(in *ResourceQuotaStatus, out *newer.ResourceQuotaStatus, s conversion.Scope) error {
-			*out = newer.ResourceQuotaStatus{}
+		func(in *ResourceQuotaStatus, out *api.ResourceQuotaStatus, s conversion.Scope) error {
+			*out = api.ResourceQuotaStatus{}
 			if err := s.Convert(&in.Hard, &out.Hard, 0); err != nil {
 				return err
 			}
@@ -948,7 +1015,7 @@ func init() {
 
 		// Object ID <-> Name
 		// TODO: amend the conversion package to allow overriding specific fields.
-		func(in *ObjectReference, out *newer.ObjectReference, s conversion.Scope) error {
+		func(in *ObjectReference, out *api.ObjectReference, s conversion.Scope) error {
 			out.Kind = in.Kind
 			out.Namespace = in.Namespace
 			out.Name = in.ID
@@ -958,7 +1025,7 @@ func init() {
 			out.FieldPath = in.FieldPath
 			return nil
 		},
-		func(in *newer.ObjectReference, out *ObjectReference, s conversion.Scope) error {
+		func(in *api.ObjectReference, out *ObjectReference, s conversion.Scope) error {
 			out.Kind = in.Kind
 			out.Namespace = in.Namespace
 			out.ID = in.Name
@@ -973,7 +1040,7 @@ func init() {
 		// Event Source <-> Source.Component
 		// Event Host <-> Source.Host
 		// TODO: remove this when it becomes possible to specify a field name conversion on a specific type
-		func(in *newer.Event, out *Event, s conversion.Scope) error {
+		func(in *api.Event, out *Event, s conversion.Scope) error {
 			if err := s.Convert(&in.TypeMeta, &out.TypeMeta, 0); err != nil {
 				return err
 			}
@@ -990,7 +1057,7 @@ func init() {
 			out.Count = in.Count
 			return s.Convert(&in.InvolvedObject, &out.InvolvedObject, 0)
 		},
-		func(in *Event, out *newer.Event, s conversion.Scope) error {
+		func(in *Event, out *api.Event, s conversion.Scope) error {
 			if err := s.Convert(&in.TypeMeta, &out.TypeMeta, 0); err != nil {
 				return err
 			}
@@ -1039,28 +1106,28 @@ func init() {
 		},
 
 		// Convert resource lists.
-		func(in *ResourceList, out *newer.ResourceList, s conversion.Scope) error {
-			*out = newer.ResourceList{}
+		func(in *ResourceList, out *api.ResourceList, s conversion.Scope) error {
+			*out = api.ResourceList{}
 			for k, v := range *in {
 				fv, err := strconv.ParseFloat(v.String(), 64)
 				if err != nil {
-					return &newer.ConversionError{
+					return &api.ConversionError{
 						In: in, Out: out,
 						Message: fmt.Sprintf("value '%v' of '%v': %v", v, k, err),
 					}
 				}
 				if k == ResourceCPU {
-					(*out)[newer.ResourceCPU] = *resource.NewMilliQuantity(int64(fv*1000), resource.DecimalSI)
+					(*out)[api.ResourceCPU] = *resource.NewMilliQuantity(int64(fv*1000), resource.DecimalSI)
 				} else {
-					(*out)[newer.ResourceName(k)] = *resource.NewQuantity(int64(fv), resource.BinarySI)
+					(*out)[api.ResourceName(k)] = *resource.NewQuantity(int64(fv), resource.BinarySI)
 				}
 			}
 			return nil
 		},
-		func(in *newer.ResourceList, out *ResourceList, s conversion.Scope) error {
+		func(in *api.ResourceList, out *ResourceList, s conversion.Scope) error {
 			*out = ResourceList{}
 			for k, v := range *in {
-				if k == newer.ResourceCPU {
+				if k == api.ResourceCPU {
 					(*out)[ResourceCPU] = util.NewIntOrStringFromString(fmt.Sprintf("%v", float64(v.MilliValue())/1000))
 				} else {
 					(*out)[ResourceName(k)] = util.NewIntOrStringFromInt(int(v.Value()))
@@ -1069,14 +1136,14 @@ func init() {
 			return nil
 		},
 
-		func(in *newer.Volume, out *Volume, s conversion.Scope) error {
+		func(in *api.Volume, out *Volume, s conversion.Scope) error {
 			if err := s.Convert(&in.VolumeSource, &out.Source, 0); err != nil {
 				return err
 			}
 			out.Name = in.Name
 			return nil
 		},
-		func(in *Volume, out *newer.Volume, s conversion.Scope) error {
+		func(in *Volume, out *api.Volume, s conversion.Scope) error {
 			if err := s.Convert(&in.Source, &out.VolumeSource, 0); err != nil {
 				return err
 			}
@@ -1084,7 +1151,7 @@ func init() {
 			return nil
 		},
 
-		func(in *newer.VolumeSource, out *VolumeSource, s conversion.Scope) error {
+		func(in *api.VolumeSource, out *VolumeSource, s conversion.Scope) error {
 			if err := s.Convert(&in.EmptyDir, &out.EmptyDir, 0); err != nil {
 				return err
 			}
@@ -1112,9 +1179,15 @@ func init() {
 			if err := s.Convert(&in.Glusterfs, &out.Glusterfs, 0); err != nil {
 				return err
 			}
+			if err := s.Convert(&in.PersistentVolumeClaimVolumeSource, &out.PersistentVolumeClaimVolumeSource, 0); err != nil {
+				return err
+			}
+			if err := s.Convert(&in.RBD, &out.RBD, 0); err != nil {
+				return err
+			}
 			return nil
 		},
-		func(in *VolumeSource, out *newer.VolumeSource, s conversion.Scope) error {
+		func(in *VolumeSource, out *api.VolumeSource, s conversion.Scope) error {
 			if err := s.Convert(&in.EmptyDir, &out.EmptyDir, 0); err != nil {
 				return err
 			}
@@ -1139,19 +1212,25 @@ func init() {
 			if err := s.Convert(&in.NFS, &out.NFS, 0); err != nil {
 				return err
 			}
+			if err := s.Convert(&in.PersistentVolumeClaimVolumeSource, &out.PersistentVolumeClaimVolumeSource, 0); err != nil {
+				return err
+			}
 			if err := s.Convert(&in.Glusterfs, &out.Glusterfs, 0); err != nil {
+				return err
+			}
+			if err := s.Convert(&in.RBD, &out.RBD, 0); err != nil {
 				return err
 			}
 			return nil
 		},
 
-		func(in *newer.PullPolicy, out *PullPolicy, s conversion.Scope) error {
+		func(in *api.PullPolicy, out *PullPolicy, s conversion.Scope) error {
 			switch *in {
-			case newer.PullAlways:
+			case api.PullAlways:
 				*out = PullAlways
-			case newer.PullNever:
+			case api.PullNever:
 				*out = PullNever
-			case newer.PullIfNotPresent:
+			case api.PullIfNotPresent:
 				*out = PullIfNotPresent
 			case "":
 				*out = ""
@@ -1161,51 +1240,51 @@ func init() {
 			}
 			return nil
 		},
-		func(in *PullPolicy, out *newer.PullPolicy, s conversion.Scope) error {
+		func(in *PullPolicy, out *api.PullPolicy, s conversion.Scope) error {
 			switch *in {
 			case PullAlways:
-				*out = newer.PullAlways
+				*out = api.PullAlways
 			case PullNever:
-				*out = newer.PullNever
+				*out = api.PullNever
 			case PullIfNotPresent:
-				*out = newer.PullIfNotPresent
+				*out = api.PullIfNotPresent
 			case "":
 				*out = ""
 			default:
 				// Let unknown values through - they will get caught by validation
-				*out = newer.PullPolicy(*in)
+				*out = api.PullPolicy(*in)
 			}
 			return nil
 		},
 
-		func(in *newer.RestartPolicy, out *RestartPolicy, s conversion.Scope) error {
+		func(in *api.RestartPolicy, out *RestartPolicy, s conversion.Scope) error {
 			switch *in {
-			case newer.RestartPolicyAlways:
+			case api.RestartPolicyAlways:
 				*out = RestartPolicy{Always: &RestartPolicyAlways{}}
-			case newer.RestartPolicyNever:
+			case api.RestartPolicyNever:
 				*out = RestartPolicy{Never: &RestartPolicyNever{}}
-			case newer.RestartPolicyOnFailure:
+			case api.RestartPolicyOnFailure:
 				*out = RestartPolicy{OnFailure: &RestartPolicyOnFailure{}}
 			default:
 				*out = RestartPolicy{}
 			}
 			return nil
 		},
-		func(in *RestartPolicy, out *newer.RestartPolicy, s conversion.Scope) error {
+		func(in *RestartPolicy, out *api.RestartPolicy, s conversion.Scope) error {
 			switch {
 			case in.Always != nil:
-				*out = newer.RestartPolicyAlways
+				*out = api.RestartPolicyAlways
 			case in.Never != nil:
-				*out = newer.RestartPolicyNever
+				*out = api.RestartPolicyNever
 			case in.OnFailure != nil:
-				*out = newer.RestartPolicyOnFailure
+				*out = api.RestartPolicyOnFailure
 			default:
 				*out = ""
 			}
 			return nil
 		},
 
-		func(in *newer.Probe, out *LivenessProbe, s conversion.Scope) error {
+		func(in *api.Probe, out *LivenessProbe, s conversion.Scope) error {
 			if err := s.Convert(&in.Exec, &out.Exec, 0); err != nil {
 				return err
 			}
@@ -1219,7 +1298,7 @@ func init() {
 			out.TimeoutSeconds = in.TimeoutSeconds
 			return nil
 		},
-		func(in *LivenessProbe, out *newer.Probe, s conversion.Scope) error {
+		func(in *LivenessProbe, out *api.Probe, s conversion.Scope) error {
 			if err := s.Convert(&in.Exec, &out.Exec, 0); err != nil {
 				return err
 			}
@@ -1234,7 +1313,7 @@ func init() {
 			return nil
 		},
 
-		func(in *newer.Endpoints, out *Endpoints, s conversion.Scope) error {
+		func(in *api.Endpoints, out *Endpoints, s conversion.Scope) error {
 			if err := s.Convert(&in.TypeMeta, &out.TypeMeta, 0); err != nil {
 				return err
 			}
@@ -1281,7 +1360,7 @@ func init() {
 			}
 			return nil
 		},
-		func(in *Endpoints, out *newer.Endpoints, s conversion.Scope) error {
+		func(in *Endpoints, out *api.Endpoints, s conversion.Scope) error {
 			if err := s.Convert(&in.TypeMeta, &out.TypeMeta, 0); err != nil {
 				return err
 			}
@@ -1295,7 +1374,7 @@ func init() {
 			return nil
 		},
 
-		func(in *newer.NodeCondition, out *NodeCondition, s conversion.Scope) error {
+		func(in *api.NodeCondition, out *NodeCondition, s conversion.Scope) error {
 			if err := s.Convert(&in.Type, &out.Kind, 0); err != nil {
 				return err
 			}
@@ -1316,7 +1395,7 @@ func init() {
 			}
 			return nil
 		},
-		func(in *NodeCondition, out *newer.NodeCondition, s conversion.Scope) error {
+		func(in *NodeCondition, out *api.NodeCondition, s conversion.Scope) error {
 			if err := s.Convert(&in.Kind, &out.Type, 0); err != nil {
 				return err
 			}
@@ -1338,9 +1417,9 @@ func init() {
 			return nil
 		},
 
-		func(in *newer.NodeConditionType, out *NodeConditionKind, s conversion.Scope) error {
+		func(in *api.NodeConditionType, out *NodeConditionKind, s conversion.Scope) error {
 			switch *in {
-			case newer.NodeReady:
+			case api.NodeReady:
 				*out = NodeReady
 				break
 			case "":
@@ -1351,26 +1430,26 @@ func init() {
 			}
 			return nil
 		},
-		func(in *NodeConditionKind, out *newer.NodeConditionType, s conversion.Scope) error {
+		func(in *NodeConditionKind, out *api.NodeConditionType, s conversion.Scope) error {
 			switch *in {
 			case NodeReady:
-				*out = newer.NodeReady
+				*out = api.NodeReady
 				break
 			case "":
 				*out = ""
 			default:
-				*out = newer.NodeConditionType(*in)
+				*out = api.NodeConditionType(*in)
 				break
 			}
 			return nil
 		},
 
-		func(in *newer.ConditionStatus, out *ConditionStatus, s conversion.Scope) error {
+		func(in *api.ConditionStatus, out *ConditionStatus, s conversion.Scope) error {
 			switch *in {
-			case newer.ConditionTrue:
+			case api.ConditionTrue:
 				*out = ConditionFull
 				break
-			case newer.ConditionFalse:
+			case api.ConditionFalse:
 				*out = ConditionNone
 				break
 			default:
@@ -1379,22 +1458,22 @@ func init() {
 			}
 			return nil
 		},
-		func(in *ConditionStatus, out *newer.ConditionStatus, s conversion.Scope) error {
+		func(in *ConditionStatus, out *api.ConditionStatus, s conversion.Scope) error {
 			switch *in {
 			case ConditionFull:
-				*out = newer.ConditionTrue
+				*out = api.ConditionTrue
 				break
 			case ConditionNone:
-				*out = newer.ConditionFalse
+				*out = api.ConditionFalse
 				break
 			default:
-				*out = newer.ConditionStatus(*in)
+				*out = api.ConditionStatus(*in)
 				break
 			}
 			return nil
 		},
 
-		func(in *newer.PodCondition, out *PodCondition, s conversion.Scope) error {
+		func(in *api.PodCondition, out *PodCondition, s conversion.Scope) error {
 			if err := s.Convert(&in.Type, &out.Kind, 0); err != nil {
 				return err
 			}
@@ -1403,7 +1482,7 @@ func init() {
 			}
 			return nil
 		},
-		func(in *PodCondition, out *newer.PodCondition, s conversion.Scope) error {
+		func(in *PodCondition, out *api.PodCondition, s conversion.Scope) error {
 			if err := s.Convert(&in.Kind, &out.Type, 0); err != nil {
 				return err
 			}
@@ -1413,9 +1492,9 @@ func init() {
 			return nil
 		},
 
-		func(in *newer.PodConditionType, out *PodConditionKind, s conversion.Scope) error {
+		func(in *api.PodConditionType, out *PodConditionKind, s conversion.Scope) error {
 			switch *in {
-			case newer.PodReady:
+			case api.PodReady:
 				*out = PodReady
 				break
 			case "":
@@ -1426,31 +1505,31 @@ func init() {
 			}
 			return nil
 		},
-		func(in *PodConditionKind, out *newer.PodConditionType, s conversion.Scope) error {
+		func(in *PodConditionKind, out *api.PodConditionType, s conversion.Scope) error {
 			switch *in {
 			case PodReady:
-				*out = newer.PodReady
+				*out = api.PodReady
 				break
 			case "":
 				*out = ""
 			default:
-				*out = newer.PodConditionType(*in)
+				*out = api.PodConditionType(*in)
 				break
 			}
 			return nil
 		},
 
-		func(in *Binding, out *newer.Binding, s conversion.Scope) error {
+		func(in *Binding, out *api.Binding, s conversion.Scope) error {
 			if err := s.DefaultConvert(in, out, conversion.IgnoreMissingFields); err != nil {
 				return err
 			}
-			out.Target = newer.ObjectReference{
+			out.Target = api.ObjectReference{
 				Name: in.Host,
 			}
 			out.Name = in.PodID
 			return nil
 		},
-		func(in *newer.Binding, out *Binding, s conversion.Scope) error {
+		func(in *api.Binding, out *Binding, s conversion.Scope) error {
 			if err := s.DefaultConvert(in, out, conversion.IgnoreMissingFields); err != nil {
 				return err
 			}
@@ -1458,11 +1537,11 @@ func init() {
 			out.PodID = in.Name
 			return nil
 		},
-		func(in *newer.SecretVolumeSource, out *SecretVolumeSource, s conversion.Scope) error {
+		func(in *api.SecretVolumeSource, out *SecretVolumeSource, s conversion.Scope) error {
 			out.Target.ID = in.SecretName
 			return nil
 		},
-		func(in *SecretVolumeSource, out *newer.SecretVolumeSource, s conversion.Scope) error {
+		func(in *SecretVolumeSource, out *api.SecretVolumeSource, s conversion.Scope) error {
 			out.SecretName = in.Target.ID
 			return nil
 		},
@@ -1473,7 +1552,7 @@ func init() {
 	}
 
 	// Add field conversion funcs.
-	err = newer.Scheme.AddFieldLabelConversionFunc("v1beta2", "Pod",
+	err = api.Scheme.AddFieldLabelConversionFunc("v1beta2", "Pod",
 		func(label, value string) (string, string, error) {
 			switch label {
 			case "name":
@@ -1482,8 +1561,8 @@ func init() {
 				return "spec.host", value, nil
 			case "DesiredState.Status":
 				podStatus := PodStatus(value)
-				var internalValue newer.PodPhase
-				newer.Scheme.Convert(&podStatus, &internalValue)
+				var internalValue api.PodPhase
+				api.Scheme.Convert(&podStatus, &internalValue)
 				return "status.phase", string(internalValue), nil
 			default:
 				return "", "", fmt.Errorf("field label not supported: %s", label)
@@ -1493,11 +1572,13 @@ func init() {
 		// If one of the conversion functions is malformed, detect it immediately.
 		panic(err)
 	}
-	err = newer.Scheme.AddFieldLabelConversionFunc("v1beta2", "Node",
+	err = api.Scheme.AddFieldLabelConversionFunc("v1beta2", "Node",
 		func(label, value string) (string, string, error) {
 			switch label {
 			case "name":
 				return "metadata.name", value, nil
+			case "unschedulable":
+				return "spec.unschedulable", value, nil
 			default:
 				return "", "", fmt.Errorf("field label not supported: %s", label)
 			}
@@ -1506,7 +1587,7 @@ func init() {
 		// if one of the conversion functions is malformed, detect it immediately.
 		panic(err)
 	}
-	err = newer.Scheme.AddFieldLabelConversionFunc("v1beta2", "ReplicationController",
+	err = api.Scheme.AddFieldLabelConversionFunc("v1beta2", "ReplicationController",
 		func(label, value string) (string, string, error) {
 			switch label {
 			case "name":
@@ -1521,7 +1602,7 @@ func init() {
 		// If one of the conversion functions is malformed, detect it immediately.
 		panic(err)
 	}
-	err = newer.Scheme.AddFieldLabelConversionFunc("v1beta2", "Event",
+	err = api.Scheme.AddFieldLabelConversionFunc("v1beta2", "Event",
 		func(label, value string) (string, string, error) {
 			switch label {
 			case "involvedObject.kind",
@@ -1543,11 +1624,37 @@ func init() {
 		// If one of the conversion functions is malformed, detect it immediately.
 		panic(err)
 	}
-	err = newer.Scheme.AddFieldLabelConversionFunc("v1beta1", "Namespace",
+	err = api.Scheme.AddFieldLabelConversionFunc("v1beta2", "Namespace",
 		func(label, value string) (string, string, error) {
 			switch label {
 			case "status.phase":
 				return label, value, nil
+			default:
+				return "", "", fmt.Errorf("field label not supported: %s", label)
+			}
+		})
+	if err != nil {
+		// If one of the conversion functions is malformed, detect it immediately.
+		panic(err)
+	}
+	err = api.Scheme.AddFieldLabelConversionFunc("v1beta2", "Secret",
+		func(label, value string) (string, string, error) {
+			switch label {
+			case "type":
+				return label, value, nil
+			default:
+				return "", "", fmt.Errorf("field label not supported: %s", label)
+			}
+		})
+	if err != nil {
+		// If one of the conversion functions is malformed, detect it immediately.
+		panic(err)
+	}
+	err = api.Scheme.AddFieldLabelConversionFunc("v1beta2", "ServiceAccount",
+		func(label, value string) (string, string, error) {
+			switch label {
+			case "name":
+				return "metadata.name", value, nil
 			default:
 				return "", "", fmt.Errorf("field label not supported: %s", label)
 			}

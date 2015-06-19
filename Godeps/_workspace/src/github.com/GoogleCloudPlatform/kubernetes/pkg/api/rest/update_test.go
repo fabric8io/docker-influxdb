@@ -1,5 +1,5 @@
 /*
-Copyright 2014 Google Inc. All rights reserved.
+Copyright 2014 The Kubernetes Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -35,6 +35,7 @@ func makeValidService() api.Service {
 		Spec: api.ServiceSpec{
 			Selector:        map[string]string{"key": "val"},
 			SessionAffinity: "None",
+			Type:            api.ServiceTypeClusterIP,
 			Ports:           []api.ServicePort{{Name: "p", Protocol: "TCP", Port: 8675}},
 		},
 	}

@@ -33,8 +33,7 @@ func TestMarshal(t *testing.T) {
 }
 
 type UnmarshalString struct {
-	A    string
-	True string
+	A string
 }
 
 type UnmarshalNestedString struct {
@@ -57,17 +56,7 @@ type NestedSlice struct {
 func TestUnmarshal(t *testing.T) {
 	y := []byte("a: 1")
 	s1 := UnmarshalString{}
-	e1 := UnmarshalString{A: "1"}
-	unmarshal(t, y, &s1, &e1)
-
-	y = []byte("a: true")
-	s1 = UnmarshalString{}
-	e1 = UnmarshalString{A: "true"}
-	unmarshal(t, y, &s1, &e1)
-
-	y = []byte("true: 1")
-	s1 = UnmarshalString{}
-	e1 = UnmarshalString{True: "1"}
+	e1 := UnmarshalString{"1"}
 	unmarshal(t, y, &s1, &e1)
 
 	y = []byte("a:\n  a: 1")

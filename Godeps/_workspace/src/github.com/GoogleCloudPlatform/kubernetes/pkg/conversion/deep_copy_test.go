@@ -1,5 +1,5 @@
 /*
-Copyright 2015 Google Inc. All rights reserved.
+Copyright 2015 The Kubernetes Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ limitations under the License.
 package conversion
 
 import (
+	"math/rand"
 	"reflect"
 	"testing"
 
@@ -105,4 +106,56 @@ func TestDeepCopyPointerSeparate(t *testing.T) {
 	if *y == 3 {
 		t.Errorf("deep copy wasn't deep: %#q %#q", x, y)
 	}
+}
+
+func TestDeepCopyStruct(t *testing.T) {
+	type Foo struct {
+		A int
+	}
+	type Bar struct {
+		Foo
+		F *Foo
+	}
+	a := &Bar{Foo{1}, &Foo{2}}
+	b := copyOrDie(t, a).(*Bar)
+	a.A = 3
+	a.F.A = 4
+
+	if b.A != 1 || b.F.A != 2 {
+		t.Errorf("deep copy wasn't deep: %#v, %#v", a, b)
+	}
+}
+
+var result interface{}
+
+func BenchmarkDeepCopy(b *testing.B) {
+	table := []interface{}{
+		map[string]string{},
+		int(5),
+		"hello world",
+		struct {
+			A, B, C struct {
+				D map[string]int
+			}
+			X []int
+			Y []byte
+		}{},
+	}
+
+	f := fuzz.New().RandSource(rand.NewSource(1)).NilChance(.5).NumElements(0, 100)
+	for i := range table {
+		out := table[i]
+		obj := reflect.New(reflect.TypeOf(out)).Interface()
+		f.Fuzz(obj)
+		table[i] = obj
+	}
+
+	b.ResetTimer()
+	var r interface{}
+	for i := 0; i < b.N; i++ {
+		for j := range table {
+			r, _ = DeepCopy(table[j])
+		}
+	}
+	result = r
 }

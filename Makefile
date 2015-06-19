@@ -1,5 +1,5 @@
 build/start-influxdb: *.go
-	godep go build -o build/start-influxdb
+	godep go build -o build/start-influxdb -a
 
 image:
 	docker build -t influxdb .

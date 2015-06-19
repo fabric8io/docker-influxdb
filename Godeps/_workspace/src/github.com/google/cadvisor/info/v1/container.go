@@ -43,6 +43,9 @@ type ContainerSpec struct {
 	// Time at which the container was created.
 	CreationTime time.Time `json:"creation_time,omitempty"`
 
+	// Metadata labels associated with this container.
+	Labels map[string]string `json:"labels,omitempty"`
+
 	HasCpu bool    `json:"has_cpu"`
 	Cpu    CpuSpec `json:"cpu,omitempty"`
 
@@ -309,7 +312,9 @@ type MemoryStatsMemoryData struct {
 	Pgmajfault uint64 `json:"pgmajfault"`
 }
 
-type NetworkStats struct {
+type InterfaceStats struct {
+	// The name of the interface.
+	Name string `json:"name"`
 	// Cumulative count of bytes received.
 	RxBytes uint64 `json:"rx_bytes"`
 	// Cumulative count of packets received.
@@ -328,6 +333,11 @@ type NetworkStats struct {
 	TxDropped uint64 `json:"tx_dropped"`
 }
 
+type NetworkStats struct {
+	InterfaceStats `json:",inline"`
+	Interfaces     []InterfaceStats `json:"interfaces,omitempty"`
+}
+
 type FsStats struct {
 	// The block device name associated with the filesystem.
 	Device string `json:"device,omitempty"`
@@ -337,6 +347,9 @@ type FsStats struct {
 
 	// Number of bytes that is consumed by the container on this filesystem.
 	Usage uint64 `json:"usage"`
+
+	// Number of bytes available for non-root user.
+	Available uint64 `json:"available"`
 
 	// Number of reads completed
 	// This is the total number of reads completed successfully.
@@ -494,31 +507,23 @@ type Event struct {
 
 // EventType is an enumerated type which lists the categories under which
 // events may fall. The Event field EventType is populated by this enum.
-type EventType int
+type EventType string
 
 const (
-	EventOom EventType = iota
-	EventContainerCreation
-	EventContainerDeletion
+	EventOom               EventType = "oom"
+	EventOomKill                     = "oomKill"
+	EventContainerCreation           = "containerCreation"
+	EventContainerDeletion           = "containerDeletion"
 )
 
 // Extra information about an event. Only one type will be set.
 type EventData struct {
-	// Information about a container creation event.
-	Created *CreatedEventData `json:"created,omitempty"`
-
-	// Information about an OOM event.
-	Oom *OomEventData `json:"oom,omitempty"`
-}
-
-// Information related to a container creation event.
-type CreatedEventData struct {
-	// Spec of the container at creation.
-	Spec ContainerSpec `json:"spec"`
+	// Information about an OOM kill event.
+	OomKill *OomKillEventData `json:"oom,omitempty"`
 }
 
 // Information related to an OOM kill instance
-type OomEventData struct {
+type OomKillEventData struct {
 	// process id of the killed process
 	Pid int `json:"pid"`
 
